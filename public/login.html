@@ -3,24 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sign Up - Expense Tracker</title>
+  <title>Log In - Expense Tracker</title>
   <link rel="stylesheet" href="css/auth.css" />
 </head>
 <body>
   <div class="container">
     <div class="auth-box">
       <div class="header-section">
-        <h2>Create Your Account</h2>
-        <p class="subtitle">Join to track your expenses</p>  <!-- Added for uniform height -->
+        <h2>Welcome Back!</h2>
+        <p class="subtitle">Log in to manage your expenses</p>
       </div>
 
       <div class="form-section">
-        <form id="signupForm">
-          <div class="input-group">
-            <label for="name">Full Name</label>
-            <input type="text" id="name" required placeholder="John Doe" />
-          </div>
-
+        <form id="loginForm">
           <div class="input-group">
             <label for="email">Email</label>
             <input type="email" id="email" required placeholder="you@example.com" />
@@ -31,19 +26,19 @@
             <input type="password" id="password" required minlength="6" placeholder="••••••••" />
           </div>
 
-          <button type="submit">Sign Up</button>
+          <button type="submit">Log In</button>
         </form>
 
         <p id="message"></p>
       </div>
 
       <p class="auth-footer">
-        Already have an account? <a href="login.html">Log in here</a>
+        New here? <a href="signup.html">Create an account</a>
       </p>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-  <script src="js/signup.js"></script>
+  <script src="js/login.js"></script>
 </body>
 </html>
