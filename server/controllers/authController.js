@@ -1,35 +1,31 @@
 const User = require('../models/User');
+const bcrypt = require('bcrypt');
+const saltRounds = 10; // Recommended value
 
 const signup = async (req, res) => {
   const { name, email, password } = req.body;
 
-  // Validation
   if (!name || !email || !password) {
-    return res.status(400).json({
-      message: 'All fields are required'
-    });
+    return res.status(400).json({ message: 'All fields are required' });
   }
 
   if (password.length < 6) {
-    return res.status(400).json({
-      message: 'Password must be at least 6 characters long'
-    });
+    return res.status(400).json({ message: 'Password must be at least 6 characters long' });
   }
 
   try {
-    // Check if user already exists
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({
-        message: 'User already exists'
-      });
+      return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create new user (plain password as requested)
+    // HASH THE PASSWORD BEFORE SAVING
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     const user = await User.create({
       name,
       email,
-      password
+      password: hashedPassword  // Save hash, not plain text!
     });
 
     res.status(201).json({
@@ -43,34 +39,32 @@ const signup = async (req, res) => {
 
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({
-      message: 'Server error. Please try again later.'
-    });
+    res.status(500).json({ message: 'Server error. Please try again later.' });
   }
 };
-
-// Add this function inside authController.js (below signup)
 
 const login = async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({
-      message: 'Email and password are required'
-    });
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
     const user = await User.findOne({ where: { email } });
 
-    // Security best practice: SAME message whether user not found OR wrong password
-    if (!user || user.password !== password) {
-      return res.status(401).json({
-        message: 'Invalid credentials. Please try again.'
-      });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials. Please try again.' });
     }
 
-    // Success!
+    // COMPARE ENTERED PASSWORD WITH STORED HASH
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials. Please try again.' });
+    }
+
+    // LOGIN SUCCESS
     res.status(200).json({
       success: true,
       message: 'Login successful!',
@@ -87,4 +81,4 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { signup, login };  // ← Don't forget to export login!
+module.exports = { signup, login };
