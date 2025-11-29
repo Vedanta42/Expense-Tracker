@@ -3,41 +3,44 @@ const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');  // NEW
+const Expense = require('./models/Expense');  // NEW: Auto-sync table
 
 const app = express();
 
-// 1. CORS - MUST be before routes and allow Live Server origins
+// CORS for Live Server
 app.use(cors({
   origin: ['http://localhost:5500', 'http://127.0.0.1:5500'],
   credentials: true
 }));
 
-// 2. Body parser - must be before routes
+// JSON parsing
 app.use(express.json());
 
-// 3. Serve static files only if you want (optional when using Live Server)
+// Serve static frontend
 app.use(express.static('public'));
 
-// 4. API Routes
+// API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/expenses', expenseRoutes);  // NEW
 
-// 5. Test route (optional)
+// Test endpoint
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is working!' });
 });
 
-// Sync database + start server
+// Sync DB & Launch
 (async () => {
   try {
-    await sequelize.sync({ force: false });
+    await sequelize.sync({ force: false });  // Creates/updates tables
     console.log('Database synced successfully');
 
     const PORT = 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`   Allow CORS for Live Server: http://localhost:5500`);
+      console.log(`   Frontend: http://127.0.0.1:5500/login.html`);
     });
   } catch (error) {
-    console.error('Unable to start server:', error);
+    console.error('Server startup error:', error);
   }
 })();

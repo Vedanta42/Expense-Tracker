@@ -5,10 +5,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   const password = document.getElementById('password').value;
   const messageEl = document.getElementById('message');
 
-  // Clear previous message
   messageEl.textContent = '';
-  
-  // Basic client-side validation
+
   if (!email || !password) {
     messageEl.style.color = '#dc3545';
     messageEl.textContent = 'Please fill in all fields';
@@ -21,18 +19,18 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       password
     });
 
+    // Store full user for per-user expenses
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+
     messageEl.style.color = '#28a745';
     messageEl.textContent = 'Login successful! Redirecting...';
 
-    // Redirect to dashboard after success
     setTimeout(() => {
-      window.location.href = 'dashboard.html'; // We'll create this next
+      window.location.href = 'dashboard.html';
     }, 1500);
 
   } catch (error) {
     messageEl.style.color = '#dc3545';
-    
-    // Security best practice: Same message for user not found OR wrong password
     const errorMsg = error.response?.data?.message || 'Invalid credentials. Please try again.';
     messageEl.textContent = errorMsg;
   }

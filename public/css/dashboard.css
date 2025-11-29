@@ -1,0 +1,180 @@
+/* Premium, Modern UI - Matches Auth.css, Mobile/Desktop Optimized */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 20px 25px;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+  margin-bottom: 30px;
+}
+
+.header h1 {
+  color: #222;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+#logoutBtn {
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+#logoutBtn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+.expense-form, .expenses-list {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+  margin-bottom: 30px;
+}
+
+.expense-form h2, .expenses-list h2 {
+  margin-bottom: 20px;
+  color: #222;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+#expenseForm {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+#expenseForm input,
+#expenseForm select {
+  padding: 13px 15px;
+  border: 2px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fbfbfb;
+  transition: all 0.25s ease;
+}
+
+#expenseForm input:focus,
+#expenseForm select:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+}
+
+#expenseForm button {
+  grid-column: 1 / -1;
+  padding: 14px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+#expenseForm button:hover {
+  background: #5a6fd8;
+  transform: translateY(-1px);
+}
+
+#expensesList {
+  list-style: none;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  border-left: 5px solid #667eea;
+  transition: all 0.25s ease;
+}
+
+.expense-item:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.expense-details {
+  flex: 1;
+}
+
+.expense-details strong {
+  font-size: 1.2em;
+  color: #d32f2f;
+}
+
+.expense-details p {
+  margin: 5px 0;
+  color: #555;
+}
+
+.category-tag {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.25s ease;
+}
+
+.delete-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+#message {
+  margin-top: 15px;
+  font-weight: 500;
+  font-size: 14px;
+  min-height: 20px;
+}
+
+/* Mobile-First Responsive */
+@media (max-width: 480px) {
+  body { padding: 10px; }
+  .container { max-width: 100%; }
+  .header, .expense-form, .expenses-list { padding: 20px; border-radius: 12px; }
+  #expenseForm { grid-template-columns: 1fr; }
+  .expense-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+}
