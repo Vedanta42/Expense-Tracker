@@ -19,6 +19,14 @@ const Expense = sequelize.define('Expense', {
   category: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  userId: {  // Explicitly added for clarity; associations will reference it
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id'
+    }
   }
 }, {
   tableName: 'expenses',

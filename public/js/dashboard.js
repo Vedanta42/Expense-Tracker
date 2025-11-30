@@ -4,15 +4,17 @@ const expensesList = document.getElementById('expensesList');
 const messageEl = document.getElementById('message');
 const logoutBtn = document.getElementById('logoutBtn');
 
-// Protect: Redirect if no user
+// Protect: Redirect if no token/user
+const token = localStorage.getItem('token');
 const user = localStorage.getItem('user');
-if (!user) {
+if (!token || !user) {
   window.location.href = 'login.html';
 }
 
-// Set userId header for all calls
 const userObj = JSON.parse(user);
-axios.defaults.headers.common['X-User-ID'] = userObj.id;
+
+// Set Authorization header for all calls (replaced X-User-ID)
+axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
 // Load on start/refresh
 loadExpenses();
@@ -87,7 +89,8 @@ async function loadExpenses() {
 
 // Logout: Clear & redirect
 logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('token');
   localStorage.removeItem('user');
-  delete axios.defaults.headers.common['X-User-ID'];
+  delete axios.defaults.headers.common['Authorization'];
   window.location.href = 'login.html';
 });

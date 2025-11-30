@@ -2,7 +2,7 @@ const Expense = require('../models/Expense');
 
 const addExpense = async (req, res) => {
   const { amount, description, category } = req.body;
-  const userId = req.headers['x-user-id'];  // Simple header read
+  const userId = req.userId;  // From verified token (replaced header)
 
   if (!userId || !amount || !description || !category) {
     return res.status(400).json({ message: 'User ID and all fields required' });
@@ -13,7 +13,7 @@ const addExpense = async (req, res) => {
       amount,
       description,
       category,
-      userId: parseInt(userId)
+      userId  // Save from token (secure)
     });
 
     res.status(201).json({
@@ -27,7 +27,7 @@ const addExpense = async (req, res) => {
 };
 
 const getExpenses = async (req, res) => {
-  const userId = req.headers['x-user-id'];
+  const userId = req.userId;  // From verified token
 
   if (!userId) {
     return res.status(401).json({ message: 'User ID required' });
@@ -35,7 +35,7 @@ const getExpenses = async (req, res) => {
 
   try {
     const expenses = await Expense.findAll({
-      where: { userId: parseInt(userId) },
+      where: { userId },  // Only user's expenses
       order: [['created_at', 'DESC']]
     });
 
@@ -48,14 +48,14 @@ const getExpenses = async (req, res) => {
 
 const deleteExpense = async (req, res) => {
   const { id } = req.params;
-  const userId = req.headers['x-user-id'];
+  const userId = req.userId;  // From verified token
 
   if (!userId) {
     return res.status(401).json({ message: 'User ID required' });
   }
 
   try {
-    const expense = await Expense.findOne({ where: { id, userId: parseInt(userId) } });
+    const expense = await Expense.findOne({ where: { id, userId } });  // Only if owner
 
     if (!expense) {
       return res.status(404).json({ message: 'Expense not found' });

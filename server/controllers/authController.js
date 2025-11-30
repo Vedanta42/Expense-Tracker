@@ -1,6 +1,8 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
-const saltRounds = 10; // Recommended value
+const jwt = require('jsonwebtoken');  // Added for token generation
+const saltRounds = 10;
+const JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';  // Hardcoded; use .env in prod
 
 const signup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -64,10 +66,18 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials. Please try again.' });
     }
 
+    // GENERATE JWT TOKEN
+    const token = jwt.sign(
+      { userId: user.id },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     // LOGIN SUCCESS
     res.status(200).json({
       success: true,
       message: 'Login successful!',
+      token,  // Send token to frontend
       user: {
         id: user.id,
         name: user.name,

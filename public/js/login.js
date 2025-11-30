@@ -19,7 +19,8 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       password
     });
 
-    // Store full user for per-user expenses
+    // Store token and user for secure requests
+    localStorage.setItem('token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data.user));
 
     messageEl.style.color = '#28a745';
