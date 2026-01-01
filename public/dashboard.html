@@ -1,3 +1,4 @@
+<!-- public/dashboard.html (updated with Premium button + Cashfree SDK) -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,12 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Expenses - Expense Tracker</title>
   <link rel="stylesheet" href="css/dashboard.css">
+  <!-- Cashfree SDK for Premium Payments -->
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 </head>
 <body>
   <div class="container">
     <header class="header">
       <h1>Daily Expenses</h1>
-      <button id="logoutBtn">Logout</button>
+      <div class="header-actions">
+        <button id="premiumBtn" class="premium-btn">Buy Premium Membership (₹199)</button>
+        <button id="logoutBtn">Logout</button>
+      </div>
     </header>
 
     <section class="expense-form">

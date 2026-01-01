@@ -1,28 +1,26 @@
-// server.js
+// server.js (updated section only - add this line with other routes)
+
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
-const expenseRoutes = require('./routes/expenseRoutes');  // NEW
-const Expense = require('./models/Expense');  // NEW: Auto-sync table
+const expenseRoutes = require('./routes/expenseRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');  // ← NEW
 
 const app = express();
 
-// CORS for Live Server
 app.use(cors({
   origin: ['http://localhost:5500', 'http://127.0.0.1:5500'],
   credentials: true
 }));
 
-// JSON parsing
 app.use(express.json());
-
-// Serve static frontend
 app.use(express.static('public'));
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/expenses', expenseRoutes);  // NEW
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/payments', paymentRoutes);  // ← NEW: Premium payment routes
 
 // Test endpoint
 app.get('/api/test', (req, res) => {
@@ -32,7 +30,7 @@ app.get('/api/test', (req, res) => {
 // Sync DB & Launch
 (async () => {
   try {
-    await sequelize.sync({ force: false });  // Creates/updates tables
+    await sequelize.sync({ alter: true });  // alter: true to add new fields/tables safely
     console.log('Database synced successfully');
 
     const PORT = 5000;

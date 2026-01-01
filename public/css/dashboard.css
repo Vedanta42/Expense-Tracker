@@ -178,3 +178,55 @@ body {
   #expenseForm { grid-template-columns: 1fr; }
   .expense-item { flex-direction: column; align-items: flex-start; gap: 10px; }
 }
+
+/* public/css/dashboard.css (add these styles for Premium button) */
+
+/* ... existing styles ... */
+
+/* Premium Button - Green gradient, matches modern UI */
+.premium-btn {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-right: 10px;
+}
+
+.premium-btn:hover {
+  background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* Header Actions - Flex for button alignment */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 480px) {
+  .header-actions {
+    flex-direction: column;
+    gap: 5px;
+  }
+  .premium-btn {
+    width: 100%;
+    margin-right: 0;
+  }
+}
+
+/* Checkout Container (for inline mode if enabled) */
+#cf-checkout {
+  width: 100%;
+  height: 400px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 20px;
+}

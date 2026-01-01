@@ -1,3 +1,5 @@
+// models/User.js (updated - added isPremium field)
+
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -22,6 +24,11 @@ const User = sequelize.define('User', {
   password: {
     type: DataTypes.STRING,
     allowNull: false
+  },
+  isPremium: {  // ← NEW: Premium membership flag
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   tableName: 'users',
