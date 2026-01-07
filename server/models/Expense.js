@@ -32,7 +32,8 @@ const Expense = sequelize.define('Expense', {
   tableName: 'expenses',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: false
+  updatedAt: false,
+  indexes: [{ fields: ['userId'] }]  // Added index for performance
 });
 
 // Per-user association

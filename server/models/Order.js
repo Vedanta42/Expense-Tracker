@@ -41,7 +41,8 @@ const Order = sequelize.define('Order', {
   tableName: 'orders',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  indexes: [{ fields: ['userId'] }, { fields: ['orderId'] }]  // Added indexes for performance
 });
 
 // Associations

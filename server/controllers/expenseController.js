@@ -4,8 +4,8 @@ const addExpense = async (req, res) => {
   const { amount, description, category } = req.body;
   const userId = req.userId;  // From verified token (replaced header)
 
-  if (!userId || !amount || !description || !category) {
-    return res.status(400).json({ message: 'User ID and all fields required' });
+  if (!userId || !amount || !description || !category || isNaN(amount)) {
+    return res.status(400).json({ message: 'User ID and all fields required; amount must be numeric' });
   }
 
   try {

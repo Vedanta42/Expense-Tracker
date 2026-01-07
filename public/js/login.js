@@ -2,7 +2,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
+  const password = document.getElementById('password').value.trim();
   const messageEl = document.getElementById('message');
 
   messageEl.textContent = '';
@@ -14,12 +14,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   }
 
   try {
-    const response = await axios.post('http://localhost:5000/api/auth/login', {
+    const response = await axios.post('/api/auth/login', {  // Relative
       email,
       password
     });
 
-    // Store token and user for secure requests
     localStorage.setItem('token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data.user));
 
@@ -27,7 +26,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     messageEl.textContent = 'Login successful! Redirecting...';
 
     setTimeout(() => {
-      window.location.href = 'dashboard.html';
+      window.location.href = '/dashboard.html';  // Relative
     }, 1500);
 
   } catch (error) {

@@ -1,6 +1,4 @@
 // services/cashfreeService.js
-// Updated return_url to redirect back to dashboard with order_id query param (frontend can read it)
-
 const { Cashfree, CFEnvironment } = require("cashfree-pg");
 
 const cashfree = new Cashfree(
@@ -28,8 +26,8 @@ const createOrder = async (
       customer_phone: customerPhone,
     },
     order_meta: {
-      // ← CHANGED: Redirect to frontend dashboard with order_id query param
-      return_url: `http://127.0.0.1:5500/dashboard.html?order_id=${orderId}`,
+      // ← FIXED: Direct to backend (port 5000) – Express serves /dashboard.html with query params
+      return_url: `http://localhost:5000/dashboard.html?order_id=${orderId}`,
       payment_methods: "cc,upi,nb",
     },
     order_expiry_time: formattedExpiryDate,
@@ -47,23 +45,16 @@ const createOrder = async (
 const getPaymentStatus = async (orderId) => {
   try {
     const response = await cashfree.PGOrderFetchPayments(orderId);
-    let getOrderResponse = response.data;
+    const getOrderResponse = response.data;
 
-    let orderStatus;
-    if (
-      getOrderResponse.filter(
-        (transaction) => transaction.payment_status === "SUCCESS"
-      ).length > 0
-    ) {
-      orderStatus = "Success";
-    } else if (
-      getOrderResponse.filter(
-        (transaction) => transaction.payment_status === "PENDING"
-      ).length > 0
-    ) {
-      orderStatus = "Pending";
-    } else {
-      orderStatus = "Failure";
+    let orderStatus = "Failure";
+    for (const transaction of getOrderResponse) {
+      if (transaction.payment_status === "SUCCESS") {
+        orderStatus = "Success";
+        break;
+      } else if (transaction.payment_status === "PENDING") {
+        orderStatus = "Pending";
+      }
     }
 
     return { orderStatus };
