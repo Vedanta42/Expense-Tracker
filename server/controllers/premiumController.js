@@ -1,18 +1,30 @@
 // server/controllers/premiumController.js
 const sequelize = require('../config/database');
-const { QueryTypes } = require('sequelize');
+const User = require('../models/User');
+const Expense = require('../models/Expense');
 
 const getLeaderboard = async (req, res) => {
   try {
-    const leaderboard = await sequelize.query(
-      `SELECT u.name, SUM(COALESCE(e.amount, 0)) AS total_expense 
-       FROM users u 
-       LEFT JOIN expenses e ON u.id = e.userId 
-       GROUP BY u.id, u.name 
-       ORDER BY total_expense DESC`,
-      { type: QueryTypes.SELECT }
-    );
-    res.json(leaderboard);
+    const leaderboard = await User.findAll({
+      attributes: [
+        'name',
+        [sequelize.fn('SUM', sequelize.col('Expenses.amount')), 'total_expense']
+      ],
+      include: [{
+        model: Expense,
+        attributes: []
+      }],
+      group: ['User.id'],
+      order: [[sequelize.col('total_expense'), 'DESC']]
+    });
+
+    // Map to plain objects (Sequelize instances → JSON-like)
+    const formattedLeaderboard = leaderboard.map(user => ({
+      name: user.name,
+      total_expense: user.dataValues.total_expense || 0  // Handle null as 0
+    }));
+
+    res.json(formattedLeaderboard);
   } catch (error) {
     console.error('Leaderboard error:', error);
     res.status(500).json({ message: 'Failed to fetch leaderboard' });
