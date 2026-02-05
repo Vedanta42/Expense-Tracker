@@ -1,9 +1,11 @@
+// server/server.js
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/database');
 const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const premiumRoutes = require('./routes/premiumRoutes');  // New: Premium routes
 
 const app = express();
 
@@ -22,13 +24,14 @@ app.use(cors({
 
 app.use(express.json());
 
-// ← FIXED: Absolute path to public (works from /Expense App/server)
+// Static serving
 const path = require('path');
 app.use(express.static(path.join(__dirname, '../public')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/premium', premiumRoutes);  // New: Premium API group
 
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is working!' });

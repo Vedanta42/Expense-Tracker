@@ -1,3 +1,4 @@
+<!-- public/dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,12 +18,16 @@
       </div>
     </header>
 
+    <div id="premiumMessage" class="premium-message" style="display: none;">
+      You are a premium user now 🎉
+    </div>
+
     <section class="expense-form">
       <h2>Add New Expense</h2>
       <form id="expenseForm">
-        <input type="number" id="amount" name="amount" placeholder="Amount (₹)" step="0.01" required>  <!-- ← FIXED: Added name -->
-        <input type="text" id="description" name="description" placeholder="Description" required>  <!-- ← FIXED: Added name -->
-        <select id="category" name="category" required>  <!-- ← FIXED: Added name -->
+        <input type="number" id="amount" name="amount" placeholder="Amount (₹)" step="0.01" required>
+        <input type="text" id="description" name="description" placeholder="Description" required>
+        <select id="category" name="category" required>
           <option value="">Select Category</option>
           <option value="Food">Food</option>
           <option value="Transport">Transport</option>
@@ -35,6 +40,14 @@
         <button type="submit">Add Expense</button>
       </form>
       <p id="message"></p>
+
+      <!-- Premium-only: Leaderboard Button -->
+      <button id="leaderboardBtn" class="premium-btn" style="display: none; margin-top: 20px;">Show Leaderboard</button>
+    </section>
+
+    <section id="leaderboardSection" class="expenses-list" style="display: none;">
+      <h2>User Leaderboard (Total Expenses)</h2>
+      <ul id="leaderboardList"></ul>
     </section>
 
     <section class="expenses-list">

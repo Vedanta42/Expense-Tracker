@@ -1,8 +1,13 @@
+// public/js/dashboard.js
 const expenseForm = document.getElementById('expenseForm');
 const expensesList = document.getElementById('expensesList');
 const messageEl = document.getElementById('message');
 const logoutBtn = document.getElementById('logoutBtn');
 const premiumBtn = document.getElementById('premiumBtn');
+const premiumMessage = document.getElementById('premiumMessage');
+const leaderboardBtn = document.getElementById('leaderboardBtn');
+const leaderboardSection = document.getElementById('leaderboardSection');
+const leaderboardList = document.getElementById('leaderboardList');
 
 const token = localStorage.getItem('token');
 const userStr = localStorage.getItem('user');
@@ -28,15 +33,19 @@ axios.interceptors.response.use(
   }
 );
 
+// Show/Hide Premium Elements
 if (userObj.isPremium) {
   premiumBtn.style.display = 'none';
+  premiumMessage.style.display = 'block';
+  leaderboardBtn.style.display = 'block';
+  if (performance.navigation.type !== 1) {
+    showMessage('Welcome to Premium! 🎉', '#28a745');
+    setTimeout(() => { messageEl.textContent = ''; }, 6000);
+  }
 } else {
   premiumBtn.style.display = 'block';
-}
-
-if (userObj.isPremium && performance.navigation.type !== 1) {
-  showMessage('Welcome to Premium! 🎉', '#28a745');
-  setTimeout(() => { messageEl.textContent = ''; }, 6000);
+  premiumMessage.style.display = 'none';
+  leaderboardBtn.style.display = 'none';
 }
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -46,7 +55,7 @@ if (orderId) {
   axios.get(`/api/payments/status/${orderId}`)
     .then(() => {
       localStorage.setItem('user', JSON.stringify({ ...userObj, isPremium: true }));
-      window.location.href = '/dashboard.html';  // ← FIXED: Redirect to clean URL (no query) – stops loop/flicker
+      window.location.href = '/dashboard.html';  // Clean redirect
     })
     .catch(() => {
       showMessage('Payment verification failed.', '#dc3545');
@@ -62,26 +71,22 @@ premiumBtn.addEventListener('click', async () => {
     cashfree.checkout({
       paymentSessionId: response.data.paymentSessionId,
       returnUrl: `http://localhost:5000/dashboard.html?order_id=${response.data.orderId}`
-    }).then(() => {
-      showMessage('Redirecting to payment...', '#007bff');
     });
   } catch (error) {
-    showMessage(error.response?.data?.message || 'Failed to create order', '#dc3545');
+    showMessage('Failed to initiate payment', '#dc3545');
   }
 });
 
 expenseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const data = {
-    amount: expenseForm.amount.value,
-    description: expenseForm.description.value,
-    category: expenseForm.category.value
-  };
+  const amount = e.target.amount.value;
+  const description = e.target.description.value;
+  const category = e.target.category.value;
 
   try {
-    await axios.post('/api/expenses/add', data);
-    expenseForm.reset();
-    showMessage('Expense added successfully!', '#28a745');
+    await axios.post('/api/expenses/add', { amount, description, category });
+    e.target.reset();
+    showMessage('Expense added!', '#28a745');
     loadExpenses();
   } catch (error) {
     console.error('Add expense error:', error.response || error);
@@ -131,6 +136,38 @@ async function loadExpenses() {
 }
 
 loadExpenses();
+
+// Leaderboard Logic
+leaderboardBtn.addEventListener('click', async () => {
+  if (leaderboardSection.style.display === 'block') {
+    leaderboardSection.style.display = 'none';
+    leaderboardBtn.textContent = 'Show Leaderboard';
+    return;
+  }
+
+  try {
+    const response = await axios.get('/api/premium/leaderboard');
+    const leaderboard = response.data;
+
+    if (leaderboard.length === 0) {
+      leaderboardList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No users yet.</li>';
+    } else {
+      leaderboardList.innerHTML = leaderboard.map((user, index) => `
+        <li class="expense-item leaderboard-item">
+          <div class="expense-details">
+            <strong>#${index + 1}: ${user.name}</strong> - Total: ₹${Number(user.total_expense || 0).toFixed(2)}
+          </div>
+        </li>
+      `).join('');
+    }
+
+    leaderboardSection.style.display = 'block';
+    leaderboardBtn.textContent = 'Hide Leaderboard';
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    showMessage('Failed to load leaderboard', '#dc3545');
+  }
+});
 
 logoutBtn.addEventListener('click', () => {
   localStorage.removeItem('token');
