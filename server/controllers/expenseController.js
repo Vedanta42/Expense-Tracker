@@ -69,7 +69,16 @@ const deleteExpense = async (req, res) => {
       return res.status(404).json({ message: 'Expense not found' });
     }
 
-    await expense.destroy();
+    await sequelize.transaction(async (t) => {
+      await User.decrement('totalExpenses', {
+        by: parseFloat(expense.amount),
+        where: { id: userId },
+        transaction: t
+      });
+
+      await expense.destroy({ transaction: t });
+    });
+
     res.json({ success: true, message: 'Expense deleted' });
   } catch (error) {
     console.error('Delete error:', error);
