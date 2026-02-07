@@ -2,16 +2,32 @@
 const Expense = require('../models/Expense');
 const User = require('../models/User');
 const sequelize = require('../config/database');
+const { GoogleGenAI } = require('@google/genai');
+
+const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
 const addExpense = async (req, res) => {
-  const { amount, description, category } = req.body;
+  let { amount, description, category } = req.body;
   const userId = req.userId;
 
-  if (!userId || !amount || !description || !category || isNaN(amount)) {
-    return res.status(400).json({ message: 'User ID and all fields required; amount must be numeric' });
+  if (!userId || !amount || !description || isNaN(amount)) {
+    return res.status(400).json({ message: 'User ID, amount, and description required; amount must be numeric' });
   }
 
   try {
+    if (!category) {
+      try {
+        const response = await ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: `Categorize this expense description into one of: Food, Transport, Shopping, Bills, Entertainment, Salary, Other. Description: ${description}. Respond with only the category name.`
+        });
+        category = response.text.trim();
+      } catch (aiError) {
+        console.error('AI categorization error:', aiError);
+        category = 'Other';
+      }
+    }
+
     await sequelize.transaction(async (t) => {
       await Expense.create({
         amount,
