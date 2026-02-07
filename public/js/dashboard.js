@@ -109,7 +109,7 @@ async function loadExpenses() {
         <div class="expense-details">
           <strong>₹${Number(expense.amount).toFixed(2)}</strong> - ${expense.description} 
           <em>(${expense.category})</em>
-          <span class="expense-date">${new Date(expense.createdAt).toLocaleDateString('en-IN')}</span>
+          <span class="expense-date">${new Date(expense.created_at).toLocaleDateString('en-IN')}</span>
         </div>
         <button class="delete-btn" data-id="${expense.id}">Delete</button>
       </li>
