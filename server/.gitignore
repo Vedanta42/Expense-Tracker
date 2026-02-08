@@ -1,0 +1,5 @@
+# Secrets & Junk
+.env
+node_modules/
+*.log
+.DS_Store
