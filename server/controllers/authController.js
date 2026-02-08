@@ -1,8 +1,12 @@
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys, SendSmtpEmail } = require('@getbrevo/brevo');
 const saltRounds = 10;
 const JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';
+
+const transactionalEmailsApi = new TransactionalEmailsApi();
+transactionalEmailsApi.setApiKey(TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 const signup = async (req, res) => {
   const { name, email, password } = req.body;
@@ -73,4 +77,39 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { signup, login };
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: 'Email required' });
+  }
+
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });  // Or "Email sent if exists" for security
+    }
+
+    const sendSmtpEmail = new SendSmtpEmail();
+    sendSmtpEmail.subject = 'Password Reset - Expense Tracker';
+    sendSmtpEmail.textContent = 'This is a dummy password reset email. Your reset link would be here. If you didn\'t request this, ignore it.';
+    // UPDATED: Use your Brevo-registered email as sender (e.g., vedanta420@gmail.com) – replace below
+    sendSmtpEmail.sender = { name: 'Expense Tracker Support', email: 'vedanta420@gmail.com' };  // ← CHANGE THIS TO YOUR VERIFIED EMAIL
+    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
+
+    const result = await transactionalEmailsApi.sendTransacEmail(sendSmtpEmail);
+    console.log('Email sent successfully:', result);
+
+    res.json({ success: true, message: 'Reset email sent! Check your inbox (including spam folder).' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    // Handle Brevo-specific errors (e.g., sender invalid)
+    if (error.message && error.message.includes('sender')) {
+      res.status(500).json({ message: 'Sender email not verified. Please check Brevo settings or use a verified email.' });
+    } else {
+      res.status(500).json({ message: 'Failed to send email. Please try again.' });
+    }
+  }
+};
+
+module.exports = { signup, login, forgotPassword };

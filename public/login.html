@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Log In - Expense Tracker</title>
-  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/login.css" />
 </head>
 <body>
   <div class="container">
@@ -34,6 +34,34 @@
 
       <p class="auth-footer">
         New here? <a href="signup.html">Create an account</a>
+      </p>
+      <p class="auth-footer">
+        <a href="#" id="forgotPasswordLink">Forgot password?</a>
+      </p>
+    </div>
+
+    <!-- Forgot Password Form (hidden) -->
+    <div id="forgotPasswordSection" class="auth-box" style="display: none;">
+      <div class="header-section">
+        <h2>Forgot Password</h2>
+        <p class="subtitle">Enter your email to reset</p>
+      </div>
+
+      <div class="form-section">
+        <form id="forgotPasswordForm">
+          <div class="input-group">
+            <label for="forgotEmail">Email</label>
+            <input type="email" id="forgotEmail" required placeholder="you@example.com" />
+          </div>
+
+          <button type="submit">Send Reset Link</button>
+        </form>
+
+        <p id="forgotMessage"></p>
+      </div>
+
+      <p class="auth-footer">
+        <a href="#" id="backToLoginLink">Back to Login</a>
       </p>
     </div>
   </div>

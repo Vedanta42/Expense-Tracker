@@ -7,6 +7,7 @@ const authRoutes = require('./routes/authRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const premiumRoutes = require('./routes/premiumRoutes');  // New: Premium routes
+const forgotRoutes = require('./routes/forgotRoutes');    // New: Forgot password routes
 
 const app = express();
 
@@ -33,6 +34,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/premium', premiumRoutes);  // New: Premium API group
+app.use('/password', forgotRoutes);      // New: Forgot password routes
 
 app.get('/api/test', (req, res) => {
   res.json({ message: 'Backend is working!' });
