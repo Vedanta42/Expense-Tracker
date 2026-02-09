@@ -1,6 +1,9 @@
 const User = require('../models/User');
+const ForgotPasswordRequest = require('../models/ForgotPasswordRequest');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const sequelize = require('../config/database');
 const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys, SendSmtpEmail } = require('@getbrevo/brevo');
 const saltRounds = 10;
 const JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';
@@ -90,26 +93,77 @@ const forgotPassword = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });  // Or "Email sent if exists" for security
     }
 
+    const requestId = uuidv4();
+    await ForgotPasswordRequest.create({
+      id: requestId,
+      userId: user.id,
+      isactive: true
+    });
+
+    const resetLink = `http://localhost:5000/password/resetpassword/${requestId}`;
+
     const sendSmtpEmail = new SendSmtpEmail();
     sendSmtpEmail.subject = 'Password Reset - Expense Tracker';
-    sendSmtpEmail.textContent = 'This is a dummy password reset email. Your reset link would be here. If you didn\'t request this, ignore it.';
-    // UPDATED: Use your Brevo-registered email as sender (e.g., vedanta420@gmail.com) – replace below
-    sendSmtpEmail.sender = { name: 'Expense Tracker Support', email: 'vedanta420@gmail.com' };  // ← CHANGE THIS TO YOUR VERIFIED EMAIL
+    sendSmtpEmail.htmlContent = `<p>Click <a href="${resetLink}">here</a> to reset your password. If you didn't request this, ignore it.</p>`;
+    sendSmtpEmail.sender = { name: 'Expense Tracker Support', email: 'vedanta420@gmail.com' };  // Verified email
     sendSmtpEmail.to = [{ email: user.email, name: user.name }];
 
     const result = await transactionalEmailsApi.sendTransacEmail(sendSmtpEmail);
-    console.log('Email sent successfully:', result);
+    console.log('Email sent:', result);
 
-    res.json({ success: true, message: 'Reset email sent! Check your inbox (including spam folder).' });
+    res.json({ success: true, message: 'Reset email sent' });
   } catch (error) {
     console.error('Forgot password error:', error);
-    // Handle Brevo-specific errors (e.g., sender invalid)
-    if (error.message && error.message.includes('sender')) {
-      res.status(500).json({ message: 'Sender email not verified. Please check Brevo settings or use a verified email.' });
-    } else {
-      res.status(500).json({ message: 'Failed to send email. Please try again.' });
-    }
+    res.status(500).json({ message: 'Failed to send email' });
   }
 };
 
-module.exports = { signup, login, forgotPassword };
+const resetPasswordPage = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const request = await ForgotPasswordRequest.findByPk(id);
+    if (!request || !request.isactive) {
+      return res.status(400).send('<h2>Invalid or expired reset link</h2>');
+    }
+
+    // Valid → redirect to form with requestId
+    res.redirect(`/resetpassword.html?requestId=${id}`);
+  } catch (error) {
+    console.error('Reset page error:', error);
+    res.status(500).send('<h2>Server error</h2>');
+  }
+};
+
+const updatePassword = async (req, res) => {
+  const { requestId, newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: 'Password min 6 chars' });
+  }
+
+  try {
+    await sequelize.transaction(async (t) => {
+      const request = await ForgotPasswordRequest.findByPk(requestId, { transaction: t });
+      if (!request || !request.isactive) {
+        throw new Error('Invalid or expired reset link');
+      }
+
+      const user = await User.findByPk(request.userId, { transaction: t });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+      await user.update({ password: hashedPassword }, { transaction: t });
+      await request.update({ isactive: false }, { transaction: t });
+    });
+
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Update password error:', error);
+    res.status(500).json({ message: error.message || 'Server error' });
+  }
+};
+
+module.exports = { signup, login, forgotPassword, resetPasswordPage, updatePassword };
