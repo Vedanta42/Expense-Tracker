@@ -9,6 +9,13 @@ const leaderboardBtn = document.getElementById('leaderboardBtn');
 const leaderboardSection = document.getElementById('leaderboardSection');
 const leaderboardList = document.getElementById('leaderboardList');
 
+// New elements for reports
+const reportBtn = document.getElementById('reportBtn');
+const reportSection = document.getElementById('reportSection');
+const reportType = document.getElementById('reportType');
+const reportContent = document.getElementById('reportContent');
+const downloadBtn = document.getElementById('downloadBtn');
+
 const token = localStorage.getItem('token');
 const userStr = localStorage.getItem('user');
 if (!token || !userStr) {
@@ -33,11 +40,12 @@ axios.interceptors.response.use(
   }
 );
 
-// Show/Hide Premium Elements
+// Show/Hide Premium Elements + new report button
 if (userObj.isPremium) {
   premiumBtn.style.display = 'none';
   premiumMessage.style.display = 'block';
   leaderboardBtn.style.display = 'block';
+  reportBtn.style.display = 'block';          // Show report button for premium
   if (performance.navigation.type !== 1) {
     showMessage('Welcome to Premium! 🎉', '#28a745');
     setTimeout(() => { messageEl.textContent = ''; }, 6000);
@@ -46,6 +54,8 @@ if (userObj.isPremium) {
   premiumBtn.style.display = 'block';
   premiumMessage.style.display = 'none';
   leaderboardBtn.style.display = 'none';
+  reportBtn.style.display = 'none';           // Hide report for non-premium
+  if (downloadBtn) downloadBtn.disabled = true; // Safety
 }
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -129,13 +139,167 @@ async function loadExpenses() {
         }
       });
     });
+
+    // Store expenses globally for reports
+    window.allExpenses = expenses;
   } catch (err) {
     console.error('Load expenses error:', err.response || err);
     expensesList.innerHTML = '<li style="text-align:center; color:#dc3545; padding:20px;">Failed to load expenses.</li>';
   }
 }
 
-loadExpenses();
+// New: Report Generation (Premium only)
+reportBtn.addEventListener('click', () => {
+  if (reportSection.style.display === 'block') {
+    reportSection.style.display = 'none';
+    reportBtn.textContent = 'Show Reports';
+    return;
+  }
+
+  generateReport();
+  reportSection.style.display = 'block';
+  reportBtn.textContent = 'Hide Reports';
+});
+
+reportType.addEventListener('change', generateReport);
+
+function generateReport() {
+  if (!window.allExpenses || window.allExpenses.length === 0) {
+    reportContent.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">No expenses to show in report.</p>';
+    return;
+  }
+
+  const type = reportType.value;
+  const sorted = [...window.allExpenses].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const groups = groupExpenses(sorted, type);
+
+  let html = '';
+
+  for (let key in groups) {
+    html += `<h3>${key}</h3>`;
+    html += buildTable(groups[key]);
+    html += buildTotals(groups[key]);
+  }
+
+  html += '<h3>Summary</h3>';
+  html += buildSummary(groups);
+
+  reportContent.innerHTML = html;
+}
+
+function groupExpenses(exps, type) {
+  const groups = {};
+  exps.forEach(exp => {
+    const date = new Date(exp.created_at);
+    let key;
+    if (type === 'daily') {
+      key = date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+    } else if (type === 'weekly') {
+      const weekStart = new Date(date);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      key = `Week of ${weekStart.toLocaleDateString('en-IN')}`;
+    } else if (type === 'monthly') {
+      key = date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long' });
+    } else {
+      key = 'All Time';
+    }
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(exp);
+  });
+  return groups;
+}
+
+function buildTable(exps) {
+  let html = '<table class="report-table"><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Income</th><th>Expense</th></tr></thead><tbody>';
+  exps.forEach(exp => {
+    const date = new Date(exp.created_at).toLocaleDateString('en-IN');
+    const income = exp.category === 'Salary' ? Number(exp.amount).toFixed(2) : '0.00';
+    const expense = exp.category !== 'Salary' ? Number(exp.amount).toFixed(2) : '0.00';
+    html += `<tr><td>${date}</td><td>${exp.description}</td><td>${exp.category}</td><td>₹${income}</td><td>₹${expense}</td></tr>`;
+  });
+  return html + '</tbody></table>';
+}
+
+function buildTotals(exps) {
+  let totalIncome = 0, totalExpense = 0;
+  exps.forEach(exp => {
+    if (exp.category === 'Salary') totalIncome += parseFloat(exp.amount);
+    else totalExpense += parseFloat(exp.amount);
+  });
+  const savings = totalIncome - totalExpense;
+  return `<p style="font-weight:bold; margin:10px 0;">Total Income: ₹${totalIncome.toFixed(2)} | Expense: ₹${totalExpense.toFixed(2)} | Savings: ₹${savings.toFixed(2)}</p>`;
+}
+
+function buildSummary(groups) {
+  let html = '<table class="report-table"><thead><tr><th>Period</th><th>Income</th><th>Expense</th><th>Savings</th></tr></thead><tbody>';
+  let grandIncome = 0, grandExpense = 0;
+  for (let key in groups) {
+    let ti = 0, te = 0;
+    groups[key].forEach(exp => {
+      if (exp.category === 'Salary') ti += parseFloat(exp.amount);
+      else te += parseFloat(exp.amount);
+    });
+    const ts = ti - te;
+    html += `<tr><td>${key}</td><td>₹${ti.toFixed(2)}</td><td>₹${te.toFixed(2)}</td><td>₹${ts.toFixed(2)}</td></tr>`;
+    grandIncome += ti;
+    grandExpense += te;
+  }
+  const grandSavings = grandIncome - grandExpense;
+  html += `<tr style="font-weight:bold;"><td>Total</td><td>₹${grandIncome.toFixed(2)}</td><td>₹${grandExpense.toFixed(2)}</td><td>₹${grandSavings.toFixed(2)}</td></tr>`;
+  return html + '</tbody></table>';
+}
+
+// Download Report as CSV
+downloadBtn.addEventListener('click', () => {
+  if (!window.allExpenses || window.allExpenses.length === 0) {
+    showMessage('No data to download', '#dc3545');
+    return;
+  }
+
+  const type = reportType.value;
+  const groups = groupExpenses(window.allExpenses, type);
+  let csv = 'Expense Report\n\n';
+
+  for (let key in groups) {
+    csv += `${key}\n`;
+    csv += 'Date,Description,Category,Income,Expense\n';
+    groups[key].forEach(exp => {
+      const date = new Date(exp.created_at).toLocaleDateString('en-IN');
+      const income = exp.category === 'Salary' ? exp.amount : 0;
+      const expense = exp.category !== 'Salary' ? exp.amount : 0;
+      csv += `"${date}","${exp.description.replace(/"/g, '""')}","${exp.category}",${income},${expense}\n`;
+    });
+
+    let ti = 0, te = 0;
+    groups[key].forEach(exp => {
+      if (exp.category === 'Salary') ti += parseFloat(exp.amount);
+      else te += parseFloat(exp.amount);
+    });
+    csv += `Totals,,${ti},${te},${ti - te}\n\n`;
+  }
+
+  // Grand summary
+  csv += 'Summary\nPeriod,Income,Expense,Savings\n';
+  let gi = 0, ge = 0;
+  for (let key in groups) {
+    let ti = 0, te = 0;
+    groups[key].forEach(exp => {
+      if (exp.category === 'Salary') ti += parseFloat(exp.amount);
+      else te += parseFloat(exp.amount);
+    });
+    csv += `"${key}",${ti},${te},${ti - te}\n`;
+    gi += ti;
+    ge += te;
+  }
+  csv += `Total,${gi},${ge},${gi - ge}\n`;
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `expense_report_${type}.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
 
 // Leaderboard Logic
 leaderboardBtn.addEventListener('click', async () => {
@@ -181,3 +345,6 @@ function showMessage(text, color = '#dc3545') {
   messageEl.style.color = color;
   setTimeout(() => { messageEl.textContent = ''; }, 3000);
 }
+
+// Initial load
+loadExpenses();

@@ -50,28 +50,27 @@ body {
 
 .expense-form, .expenses-list {
   background: white;
-  padding: 30px;
+  padding: 25px;
   border-radius: 16px;
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
   margin-bottom: 30px;
 }
 
-.expense-form h2, .expenses-list h2 {
-  margin-bottom: 20px;
+h2 {
   color: #222;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 600;
+  margin-bottom: 20px;
 }
 
-#expenseForm {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+form {
+  display: flex;
+  flex-direction: column;
   gap: 15px;
 }
 
-#expenseForm input,
-#expenseForm select {
-  padding: 13px 15px;
+input, select {
+  padding: 12px 15px;
   border: 2px solid #e4e4e7;
   border-radius: 10px;
   font-size: 15px;
@@ -79,20 +78,25 @@ body {
   transition: all 0.25s ease;
 }
 
-#expenseForm input:focus,
-#expenseForm select:focus {
+input:focus, select:focus {
+  outline: none;
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  background: white;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.15);
+}
+
+input::placeholder {
+  color: #aaa;
 }
 
 button[type="submit"] {
-  grid-column: span 1 / -1;
   padding: 14px;
   background: #667eea;
   color: white;
   border: none;
   border-radius: 10px;
   font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.25s ease;
 }
@@ -102,12 +106,22 @@ button[type="submit"]:hover {
   transform: translateY(-1px);
 }
 
+#message {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 20px;
+}
+
 .expense-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px solid #eee;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .expense-details {
@@ -115,18 +129,14 @@ button[type="submit"]:hover {
 }
 
 .expense-details strong {
-  color: #28a745;
-}
-
-.expense-details em {
-  color: #666;
-}
-
-.expense-date {
   display: block;
-  font-size: 12px;
-  color: #888;
-  margin-left: 10px;
+  color: #333;
+  font-size: 16px;
+}
+
+.expense-details span {
+  color: #666;
+  font-size: 14px;
 }
 
 .delete-btn {
@@ -135,6 +145,7 @@ button[type="submit"]:hover {
   color: white;
   border: none;
   border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.25s ease;
 }
@@ -144,28 +155,11 @@ button[type="submit"]:hover {
   transform: translateY(-1px);
 }
 
-#message {
-  margin-top: 15px;
-  font-weight: 500;
-  font-size: 14px;
-  min-height: 20px;
-}
-
-/* Mobile-First Responsive */
-@media (max-width: 480px) {
-  body { padding: 10px; }
-  .container { max-width: 100%; }
-  .header, .expense-form, .expenses-list { padding: 20px; border-radius: 12px; }
-  #expenseForm { grid-template-columns: 1fr; }
-  .expense-item { flex-direction: column; align-items: flex-start; gap: 10px; }
-}
-
-/* Premium Button - Green gradient, matches modern UI */
 .premium-btn {
+  padding: 12px 20px;
   background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
   color: white;
   border: none;
-  padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -215,4 +209,51 @@ button[type="submit"]:hover {
 /* New: Leaderboard Item */
 .leaderboard-item .expense-details strong {
   color: #007bff;
+}
+
+/* New: Report Styles */
+#reportType {
+  margin-bottom: 20px;
+  padding: 12px;
+  border: 2px solid #e4e4e7;
+  border-radius: 10px;
+  font-size: 15px;
+  background: #fbfbfb;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.report-table th {
+  background: #20c997;
+  color: white;
+  padding: 10px;
+  text-align: left;
+}
+
+.report-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.report-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+
+.report-totals {
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 480px) {
+  .report-table {
+    font-size: 14px;
+  }
+  .report-table th, .report-table td {
+    padding: 8px;
+  }
 }

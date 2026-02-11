@@ -1,33 +1,53 @@
+// controllers/paymentController.js
+const sequelize = require("../config/database"); // or wherever you export it
 const Order = require("../models/Order");
 const User = require("../models/User");
 const { getPaymentStatus } = require("../services/cashfreeService");
 
 const processPayment = async (req, res) => {
-  const { userId, amount = 199.00, customerPhone } = req.body;
+  const { userId, amount = 199.0, customerPhone } = req.body;
 
-  if (!userId) {
-    return res.status(401).json({ message: "User ID required" });
+  // ✅ userId: must be a valid integer
+  const sanitizedUserId = Number(userId);
+
+  // ✅ amount: number, no trim nonsense
+  const sanitizedAmount = Number(amount) || 199.0;
+
+  // ✅ phone: string sanitization makes sense here
+  const sanitizedPhone = typeof customerPhone === "string"
+    ? customerPhone.replace(/\D/g, "")
+    : "9999999999";
+
+  if (
+    !Number.isInteger(sanitizedUserId) ||
+    sanitizedUserId <= 0 ||
+    sanitizedAmount <= 0 ||
+    !/^\d{10}$/.test(sanitizedPhone)
+  ) {
+    return res.status(400).json({
+      message: "Valid userId, positive amount, and 10-digit phone required",
+    });
   }
 
   const orderId = `ORDER-${Date.now()}`;
-  const customerID = userId.toString();
 
   try {
     const { createOrder } = require("../services/cashfreeService");
+
     const paymentSessionId = await createOrder(
       orderId,
-      amount,
+      sanitizedAmount,
       "INR",
-      customerID,
-      customerPhone || "9999999999"
+      String(sanitizedUserId),
+      sanitizedPhone
     );
 
     await Order.create({
       orderId,
       paymentSessionId,
-      amount,
+      amount: sanitizedAmount,
       status: "PENDING",
-      userId: parseInt(userId),
+      userId: sanitizedUserId,
     });
 
     res.json({ paymentSessionId, orderId });
@@ -37,28 +57,25 @@ const processPayment = async (req, res) => {
   }
 };
 
+
 const verifyPaymentStatus = async (req, res) => {
   const { orderId } = req.params;
+  const sanitizedOrderId = orderId?.trim();
 
-  if (!orderId) {
+  if (!sanitizedOrderId) {
     return res.status(400).send("Order ID required");
   }
 
   try {
-    const { orderStatus } = await getPaymentStatus(orderId);
+    const { orderStatus } = await getPaymentStatus(sanitizedOrderId);
 
-    const order = await Order.findOne({ where: { orderId } });
-    if (!order) {
-      return res.status(404).send("Order not found");
-    }
+    const order = await Order.findOne({ where: { orderId: sanitizedOrderId } });
 
-    await order.update({ status: orderStatus === "Success" ? "SUCCESSFUL" : orderStatus.toUpperCase() });
-
-    if (orderStatus === "Success") {
-      const user = await User.findByPk(order.userId);
-      if (user && !user.isPremium) {
-        await user.update({ isPremium: true });
-      }
+    if (orderStatus === "Success" && order) {
+      await sequelize.transaction(async (t) => {
+        await order.update({ status: "SUCCESSFUL" }, { transaction: t });
+        await User.update({ isPremium: true }, { where: { id: order.userId }, transaction: t });
+      });
 
       res.send(`
         <!DOCTYPE html>

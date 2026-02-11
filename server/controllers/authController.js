@@ -1,3 +1,4 @@
+// controllers/authController.js
 const User = require('../models/User');
 const ForgotPasswordRequest = require('../models/ForgotPasswordRequest');
 const bcrypt = require('bcrypt');
@@ -6,29 +7,39 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../config/database');
 const { TransactionalEmailsApi, TransactionalEmailsApiApiKeys, SendSmtpEmail } = require('@getbrevo/brevo');
 const saltRounds = 10;
-const JWT_SECRET = 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const transactionalEmailsApi = new TransactionalEmailsApi();
 transactionalEmailsApi.setApiKey(TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
 
 const signup = async (req, res) => {
+  // Sanitize inputs
   const { name, email, password } = req.body;
+  const sanitizedEmail = email?.trim().toLowerCase();
+  const sanitizedName = name?.trim();
+  const sanitizedPassword = password?.trim();
 
-  if (!name || !email || !password || password.length < 6) {
+  if (!sanitizedName || !sanitizedEmail || !sanitizedPassword || sanitizedPassword.length < 6) {
     return res.status(400).json({ message: 'All fields required; password min 6 chars' });
   }
 
+  // Basic email validation (Sequelize has isEmail, but reinforce here)
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(sanitizedEmail)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
   try {
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await User.findOne({ where: { email: sanitizedEmail } });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(sanitizedPassword, saltRounds);
 
     const user = await User.create({
-      name,
-      email,
+      name: sanitizedName,
+      email: sanitizedEmail,
       password: hashedPassword
     });
 
@@ -38,88 +49,106 @@ const signup = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        isPremium: user.isPremium  // Added for consistency
+        isPremium: user.isPremium
       }
     });
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error during signup' });
   }
 };
 
 const login = async (req, res) => {
+  // Sanitize inputs
   const { email, password } = req.body;
+  const sanitizedEmail = email?.trim().toLowerCase();
 
-  if (!email || !password) {
+  if (!sanitizedEmail || !password?.trim()) {
     return res.status(400).json({ message: 'Email and password required' });
   }
 
   try {
-    const user = await User.findOne({ where: { email } });
-
+    const user = await User.findOne({ where: { email: sanitizedEmail } });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
-    res.status(200).json({
-      success: true,
-      message: 'Login successful!',
+    res.json({
       token,
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        isPremium: user.isPremium  // Added: Fixes dashboard check
+        isPremium: user.isPremium
       }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error during login' });
   }
 };
 
 const forgotPassword = async (req, res) => {
+  // Sanitize input
   const { email } = req.body;
+  const sanitizedEmail = email?.trim().toLowerCase();
 
-  if (!email) {
+  if (!sanitizedEmail) {
     return res.status(400).json({ message: 'Email required' });
   }
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(sanitizedEmail)) {
+    return res.status(400).json({ message: 'Invalid email format' });
+  }
+
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { email: sanitizedEmail } });
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });  // Or "Email sent if exists" for security
+      // Don't reveal if user exists
+      return res.json({ message: 'If email exists, reset link sent' });
     }
 
-    const requestId = uuidv4();
-    await ForgotPasswordRequest.create({
-      id: requestId,
-      userId: user.id,
-      isactive: true
+    const id = uuidv4();
+
+    await sequelize.transaction(async (t) => {
+      // Deactivate old requests
+      await ForgotPasswordRequest.update({ isactive: false }, { where: { userId: user.id }, transaction: t });
+
+      await ForgotPasswordRequest.create({
+        id,
+        userId: user.id
+      }, { transaction: t });
     });
 
-    const resetLink = `http://localhost:5000/password/resetpassword/${requestId}`;
-
+    // Send email
     const sendSmtpEmail = new SendSmtpEmail();
     sendSmtpEmail.subject = 'Password Reset - Expense Tracker';
-    sendSmtpEmail.htmlContent = `<p>Click <a href="${resetLink}">here</a> to reset your password. If you didn't request this, ignore it.</p>`;
-    sendSmtpEmail.sender = { name: 'Expense Tracker Support', email: 'vedanta420@gmail.com' };  // Verified email
-    sendSmtpEmail.to = [{ email: user.email, name: user.name }];
+    sendSmtpEmail.htmlBody = `
+      <h2>Reset Your Password</h2>
+      <p>Click <a href="http://localhost:5000/password/resetpassword/${id}">here</a> to reset (valid for 1 hour).</p>
+      <p>If not requested, ignore this.</p>
+    `;
+    sendSmtpEmail.sender = { name: 'Expense Tracker', email: 'noreply@expensetracker.com' };
+    sendSmtpEmail.to = [{ email: sanitizedEmail }];
 
-    const result = await transactionalEmailsApi.sendTransacEmail(sendSmtpEmail);
-    console.log('Email sent:', result);
+    await transactionalEmailsApi.sendTransacEmail(sendSmtpEmail);
 
-    res.json({ success: true, message: 'Reset email sent' });
+    res.json({ message: 'Reset email sent if email exists' });
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Failed to send email' });
+    res.status(500).json({ message: 'Failed to send reset email' });
   }
 };
 
 const resetPasswordPage = async (req, res) => {
   const { id } = req.params;
+
+  if (!id) {
+    return res.status(400).send('<h2>Invalid reset link</h2>');
+  }
 
   try {
     const request = await ForgotPasswordRequest.findByPk(id);
@@ -136,9 +165,11 @@ const resetPasswordPage = async (req, res) => {
 };
 
 const updatePassword = async (req, res) => {
+  // Sanitize input
   const { requestId, newPassword } = req.body;
+  const sanitizedNewPassword = newPassword?.trim();
 
-  if (!newPassword || newPassword.length < 6) {
+  if (!sanitizedNewPassword || sanitizedNewPassword.length < 6) {
     return res.status(400).json({ message: 'Password min 6 chars' });
   }
 
@@ -154,7 +185,7 @@ const updatePassword = async (req, res) => {
         throw new Error('User not found');
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+      const hashedPassword = await bcrypt.hash(sanitizedNewPassword, saltRounds);
       await user.update({ password: hashedPassword }, { transaction: t });
       await request.update({ isactive: false }, { transaction: t });
     });

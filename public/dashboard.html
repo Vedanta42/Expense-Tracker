@@ -43,11 +43,27 @@
 
       <!-- Premium-only: Leaderboard Button -->
       <button id="leaderboardBtn" class="premium-btn" style="display: none; margin-top: 20px;">Show Leaderboard</button>
+
+      <!-- Premium-only: Report Button -->
+      <button id="reportBtn" class="premium-btn" style="display: none; margin-top: 20px;">Show Reports</button>
     </section>
 
     <section id="leaderboardSection" class="expenses-list" style="display: none;">
       <h2>User Leaderboard (Total Expenses)</h2>
       <ul id="leaderboardList"></ul>
+    </section>
+
+    <!-- New: Premium-only Report Section -->
+    <section id="reportSection" class="expenses-list" style="display: none;">
+      <h2>Expense Reports</h2>
+      <select id="reportType">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly" selected>Monthly</option>
+        <option value="all">All</option>
+      </select>
+      <div id="reportContent"></div>
+      <button id="downloadBtn" class="premium-btn" style="margin-top: 20px;">Download Report</button>
     </section>
 
     <section class="expenses-list">
