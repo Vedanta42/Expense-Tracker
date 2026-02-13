@@ -68,9 +68,23 @@
 
     <section class="expenses-list">
       <h2>Your Expenses</h2>
+
+      <!-- NEW: Rows per page selector + pagination wrapper -->
+      <div class="pagination-controls">
+        <div class="rows-per-page">
+          <label for="rowsPerPage">Rows per page:</label>
+          <select id="rowsPerPage">
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+          </select>
+        </div>
+
+        <div id="pagination" class="pagination"></div>
+      </div>
+
       <ul id="expensesList"></ul>
-      <!-- NEW: Pagination -->
-      <div id="pagination" class="pagination"></div>
     </section>
   </div>
 

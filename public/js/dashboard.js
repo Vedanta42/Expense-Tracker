@@ -16,9 +16,12 @@ const reportType = document.getElementById('reportType');
 const reportContent = document.getElementById('reportContent');
 const downloadBtn = document.getElementById('downloadBtn');
 
-// === PAGINATION ===
+// Pagination controls
 const paginationContainer = document.getElementById('pagination');
+const rowsPerPageSelect = document.getElementById('rowsPerPage');
+
 let currentPage = 1;
+let currentLimit = 10; // default
 
 const token = localStorage.getItem('token');
 const userStr = localStorage.getItem('user');
@@ -43,6 +46,13 @@ axios.interceptors.response.use(
   }
 );
 
+// Load saved rows-per-page preference from localStorage
+const savedLimit = localStorage.getItem(`expenseRowsPerPage_${userObj.id}`);
+if (savedLimit) {
+  currentLimit = parseInt(savedLimit);
+  if (rowsPerPageSelect) rowsPerPageSelect.value = currentLimit;
+}
+
 // Show/Hide Premium Elements
 if (userObj.isPremium) {
   premiumBtn.style.display = 'none';
@@ -61,7 +71,7 @@ if (userObj.isPremium) {
   if (downloadBtn) downloadBtn.disabled = true;
 }
 
-// Payment verification from Cashfree
+// Payment verification from Cashfree redirect
 const urlParams = new URLSearchParams(window.location.search);
 const orderId = urlParams.get('order_id');
 if (orderId) {
@@ -69,7 +79,7 @@ if (orderId) {
   axios.get(`/api/payments/status/${orderId}`)
     .then(() => {
       localStorage.setItem('user', JSON.stringify({ ...userObj, isPremium: true }));
-      window.location.href = '/dashboard.html';
+      window.location.href = '/dashboard.html'; // Clean redirect
     })
     .catch(() => {
       showMessage('Payment verification failed.', '#dc3545');
@@ -91,19 +101,30 @@ premiumBtn.addEventListener('click', async () => {
   }
 });
 
-// ==================== PAGINATED EXPENSES ====================
-async function loadExpenses(page = 1) {
+// Rows per page selector change
+if (rowsPerPageSelect) {
+  rowsPerPageSelect.value = currentLimit;
+  rowsPerPageSelect.addEventListener('change', (e) => {
+    currentLimit = parseInt(e.target.value);
+    localStorage.setItem(`expenseRowsPerPage_${userObj.id}`, currentLimit);
+    currentPage = 1; // Reset to page 1 when limit changes
+    loadExpenses(currentPage, currentLimit);
+  });
+}
+
+// ==================== LOAD PAGINATED EXPENSES ====================
+async function loadExpenses(page = 1, limit = currentLimit) {
   currentPage = page;
 
   try {
-    const response = await axios.get(`/api/expenses?page=${page}`);
+    const response = await axios.get(`/api/expenses?page=${page}&limit=${limit}`);
     const data = response.data;
     const expenses = data.expenses || [];
     const pagination = data.pagination;
 
-    // If last expense on page was deleted → go back one page
-    if (expenses.length === 0 && currentPage > 1) {
-      loadExpenses(currentPage - 1);
+    // If current page is empty after delete/change → go to last valid page
+    if (expenses.length === 0 && currentPage > 1 && pagination.totalPages > 0) {
+      loadExpenses(pagination.totalPages, limit);
       return;
     }
 
@@ -121,15 +142,15 @@ async function loadExpenses(page = 1) {
         </li>
       `).join('');
 
-      // Delete buttons
+      // Attach delete listeners
       document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const id = e.target.dataset.id;
           if (confirm('Delete expense?')) {
             try {
               await axios.delete(`/api/expenses/${id}`);
-              loadExpenses(currentPage);   // refresh current page
-              loadAllExpenses();           // refresh reports data
+              loadExpenses(currentPage, currentLimit);   // refresh current page
+              loadAllExpenses();                         // refresh reports
             } catch (err) {
               console.error('Delete error:', err);
               alert('Delete failed');
@@ -150,34 +171,34 @@ function renderPagination(pagination) {
   paginationContainer.innerHTML = '';
   if (!pagination || pagination.totalPages <= 1) return;
 
-  // Previous button
+  // Previous
   const prevBtn = document.createElement('button');
   prevBtn.textContent = '← Previous';
   prevBtn.disabled = !pagination.hasPrevPage;
-  prevBtn.onclick = () => loadExpenses(currentPage - 1);
+  prevBtn.onclick = () => loadExpenses(currentPage - 1, currentLimit);
   paginationContainer.appendChild(prevBtn);
 
-  // Page number buttons
+  // Page numbers
   for (let i = 1; i <= pagination.totalPages; i++) {
     const btn = document.createElement('button');
     btn.textContent = i;
     if (i === pagination.currentPage) btn.classList.add('active');
-    btn.onclick = () => loadExpenses(i);
+    btn.onclick = () => loadExpenses(i, currentLimit);
     paginationContainer.appendChild(btn);
   }
 
-  // Next button
+  // Next
   const nextBtn = document.createElement('button');
   nextBtn.textContent = 'Next →';
   nextBtn.disabled = !pagination.hasNextPage;
-  nextBtn.onclick = () => loadExpenses(currentPage + 1);
+  nextBtn.onclick = () => loadExpenses(currentPage + 1, currentLimit);
   paginationContainer.appendChild(nextBtn);
 }
 
 // ==================== FULL EXPENSES FOR REPORTS ====================
 async function loadAllExpenses() {
   try {
-    const response = await axios.get('/api/expenses'); // no ?page → returns everything
+    const response = await axios.get('/api/expenses'); // no page/limit → full list
     window.allExpenses = response.data.expenses || [];
   } catch (err) {
     console.error('Failed to load all expenses for reports');
@@ -196,22 +217,22 @@ expenseForm.addEventListener('submit', async (e) => {
     e.target.reset();
     showMessage('Expense added!', '#28a745');
 
-    loadExpenses(1);        // go to first page (new expense appears at top)
-    loadAllExpenses();      // update reports
+    loadExpenses(1, currentLimit);   // new expense → page 1
+    loadAllExpenses();               // update reports
   } catch (error) {
     console.error('Add expense error:', error.response || error);
     showMessage(error.response?.data?.message || 'Failed to add expense', '#dc3545');
   }
 });
 
-// ==================== REPORTS (unchanged) ====================
+// ==================== REPORTS ====================
 reportBtn.addEventListener('click', async () => {
   if (reportSection.style.display === 'block') {
     reportSection.style.display = 'none';
     reportBtn.textContent = 'Show Reports';
     return;
   }
-  await loadAllExpenses();   // make sure we have full data
+  await loadAllExpenses();   // ensure full data
   generateReport();
   reportSection.style.display = 'block';
   reportBtn.textContent = 'Hide Reports';
@@ -301,7 +322,7 @@ function buildSummary(groups) {
   return html + '</tbody></table>';
 }
 
-// Download Report
+// Download Report as CSV
 downloadBtn.addEventListener('click', () => {
   if (!window.allExpenses || window.allExpenses.length === 0) {
     showMessage('No data to download', '#dc3545');
@@ -351,7 +372,7 @@ downloadBtn.addEventListener('click', () => {
   URL.revokeObjectURL(link.href);
 });
 
-// Leaderboard (unchanged)
+// Leaderboard
 leaderboardBtn.addEventListener('click', async () => {
   if (leaderboardSection.style.display === 'block') {
     leaderboardSection.style.display = 'none';
@@ -394,5 +415,5 @@ function showMessage(text, color = '#dc3545') {
 }
 
 // Initial load
-loadExpenses(1);
+loadExpenses(1, currentLimit);
 loadAllExpenses();

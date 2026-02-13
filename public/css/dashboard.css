@@ -296,3 +296,49 @@ button[type="submit"]:hover {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Dynamic Rows per Page Selector */
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.rows-per-page {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rows-per-page label {
+  font-size: 14px;
+  color: #555;
+  font-weight: 500;
+}
+
+.rows-per-page select {
+  padding: 8px 12px;
+  border: 2px solid #e4e4e7;
+  border-radius: 8px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.rows-per-page select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+}
+
+/* Make pagination + selector responsive */
+@media (max-width: 600px) {
+  .pagination-controls {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

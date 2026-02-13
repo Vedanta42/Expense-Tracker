@@ -63,44 +63,37 @@ const getExpenses = async (req, res) => {
   }
 
   try {
-    const pageParam = req.query.page;
-    let expenses;
-    let pagination = null;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10; // ← NEW: dynamic limit from frontend
 
-    if (pageParam) {
-      // PAGINATED (used by the expense list)
-      const page = parseInt(pageParam) || 1;
-      const limit = 10;
-      const offset = (page - 1) * limit;
-
-      const { count, rows } = await Expense.findAndCountAll({
-        where: { userId },
-        limit,
-        offset,
-        order: [['created_at', 'DESC']]
-      });
-
-      expenses = rows;
-      const totalPages = Math.ceil(count / limit);
-
-      pagination = {
-        currentPage: page,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      };
-    } else {
-      // FULL LIST (used only by Reports section)
-      expenses = await Expense.findAll({
-        where: { userId },
-        order: [['created_at', 'DESC']]
-      });
+    if (limit < 1 || page < 1) {
+      return res.status(400).json({ message: 'Invalid page or limit' });
     }
+
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Expense.findAndCountAll({
+      where: { userId },
+      limit,
+      offset,
+      order: [['created_at', 'DESC']]
+    });
+
+    const totalPages = Math.ceil(count / limit);
+
+    const expenses = rows;
 
     res.json({
       success: true,
       expenses,
-      ...(pagination && { pagination })
+      pagination: {
+        currentPage: page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+        totalExpenses: count,
+        rowsPerPage: limit
+      }
     });
   } catch (error) {
     console.error('Get expenses error:', error);
