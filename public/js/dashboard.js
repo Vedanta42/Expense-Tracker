@@ -9,12 +9,16 @@ const leaderboardBtn = document.getElementById('leaderboardBtn');
 const leaderboardSection = document.getElementById('leaderboardSection');
 const leaderboardList = document.getElementById('leaderboardList');
 
-// New elements for reports
+// Reports
 const reportBtn = document.getElementById('reportBtn');
 const reportSection = document.getElementById('reportSection');
 const reportType = document.getElementById('reportType');
 const reportContent = document.getElementById('reportContent');
 const downloadBtn = document.getElementById('downloadBtn');
+
+// === PAGINATION ===
+const paginationContainer = document.getElementById('pagination');
+let currentPage = 1;
 
 const token = localStorage.getItem('token');
 const userStr = localStorage.getItem('user');
@@ -23,7 +27,6 @@ if (!token || !userStr) {
 }
 
 const userObj = JSON.parse(userStr);
-
 axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
 axios.interceptors.response.use(
@@ -40,12 +43,12 @@ axios.interceptors.response.use(
   }
 );
 
-// Show/Hide Premium Elements + new report button
+// Show/Hide Premium Elements
 if (userObj.isPremium) {
   premiumBtn.style.display = 'none';
   premiumMessage.style.display = 'block';
   leaderboardBtn.style.display = 'block';
-  reportBtn.style.display = 'block';          // Show report button for premium
+  reportBtn.style.display = 'block';
   if (performance.navigation.type !== 1) {
     showMessage('Welcome to Premium! 🎉', '#28a745');
     setTimeout(() => { messageEl.textContent = ''; }, 6000);
@@ -54,10 +57,11 @@ if (userObj.isPremium) {
   premiumBtn.style.display = 'block';
   premiumMessage.style.display = 'none';
   leaderboardBtn.style.display = 'none';
-  reportBtn.style.display = 'none';           // Hide report for non-premium
-  if (downloadBtn) downloadBtn.disabled = true; // Safety
+  reportBtn.style.display = 'none';
+  if (downloadBtn) downloadBtn.disabled = true;
 }
 
+// Payment verification from Cashfree
 const urlParams = new URLSearchParams(window.location.search);
 const orderId = urlParams.get('order_id');
 if (orderId) {
@@ -65,16 +69,16 @@ if (orderId) {
   axios.get(`/api/payments/status/${orderId}`)
     .then(() => {
       localStorage.setItem('user', JSON.stringify({ ...userObj, isPremium: true }));
-      window.location.href = '/dashboard.html';  // Clean redirect
+      window.location.href = '/dashboard.html';
     })
     .catch(() => {
       showMessage('Payment verification failed.', '#dc3545');
     });
 }
 
+// Premium Buy Button
 premiumBtn.addEventListener('click', async () => {
   showMessage('Creating premium order...', '#007bff');
-
   try {
     const response = await axios.post('/api/payments/pay', { userId: userObj.id });
     const cashfree = Cashfree({ mode: "sandbox" });
@@ -87,6 +91,100 @@ premiumBtn.addEventListener('click', async () => {
   }
 });
 
+// ==================== PAGINATED EXPENSES ====================
+async function loadExpenses(page = 1) {
+  currentPage = page;
+
+  try {
+    const response = await axios.get(`/api/expenses?page=${page}`);
+    const data = response.data;
+    const expenses = data.expenses || [];
+    const pagination = data.pagination;
+
+    // If last expense on page was deleted → go back one page
+    if (expenses.length === 0 && currentPage > 1) {
+      loadExpenses(currentPage - 1);
+      return;
+    }
+
+    if (expenses.length === 0) {
+      expensesList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No expenses yet.</li>';
+    } else {
+      expensesList.innerHTML = expenses.map(expense => `
+        <li class="expense-item">
+          <div class="expense-details">
+            <strong>₹${Number(expense.amount).toFixed(2)}</strong> - ${expense.description}
+            <em>(${expense.category})</em>
+            <span class="expense-date">${new Date(expense.created_at).toLocaleDateString('en-IN')}</span>
+          </div>
+          <button class="delete-btn" data-id="${expense.id}">Delete</button>
+        </li>
+      `).join('');
+
+      // Delete buttons
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.dataset.id;
+          if (confirm('Delete expense?')) {
+            try {
+              await axios.delete(`/api/expenses/${id}`);
+              loadExpenses(currentPage);   // refresh current page
+              loadAllExpenses();           // refresh reports data
+            } catch (err) {
+              console.error('Delete error:', err);
+              alert('Delete failed');
+            }
+          }
+        });
+      });
+    }
+
+    renderPagination(pagination);
+  } catch (err) {
+    console.error('Load expenses error:', err);
+    expensesList.innerHTML = '<li style="text-align:center; color:#dc3545; padding:20px;">Failed to load expenses.</li>';
+  }
+}
+
+function renderPagination(pagination) {
+  paginationContainer.innerHTML = '';
+  if (!pagination || pagination.totalPages <= 1) return;
+
+  // Previous button
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = '← Previous';
+  prevBtn.disabled = !pagination.hasPrevPage;
+  prevBtn.onclick = () => loadExpenses(currentPage - 1);
+  paginationContainer.appendChild(prevBtn);
+
+  // Page number buttons
+  for (let i = 1; i <= pagination.totalPages; i++) {
+    const btn = document.createElement('button');
+    btn.textContent = i;
+    if (i === pagination.currentPage) btn.classList.add('active');
+    btn.onclick = () => loadExpenses(i);
+    paginationContainer.appendChild(btn);
+  }
+
+  // Next button
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = 'Next →';
+  nextBtn.disabled = !pagination.hasNextPage;
+  nextBtn.onclick = () => loadExpenses(currentPage + 1);
+  paginationContainer.appendChild(nextBtn);
+}
+
+// ==================== FULL EXPENSES FOR REPORTS ====================
+async function loadAllExpenses() {
+  try {
+    const response = await axios.get('/api/expenses'); // no ?page → returns everything
+    window.allExpenses = response.data.expenses || [];
+  } catch (err) {
+    console.error('Failed to load all expenses for reports');
+  }
+}
+
+// ==================== ADD EXPENSE ====================
 expenseForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const amount = e.target.amount.value;
@@ -97,65 +195,23 @@ expenseForm.addEventListener('submit', async (e) => {
     await axios.post('/api/expenses/add', { amount, description, category });
     e.target.reset();
     showMessage('Expense added!', '#28a745');
-    loadExpenses();
+
+    loadExpenses(1);        // go to first page (new expense appears at top)
+    loadAllExpenses();      // update reports
   } catch (error) {
     console.error('Add expense error:', error.response || error);
     showMessage(error.response?.data?.message || 'Failed to add expense', '#dc3545');
   }
 });
 
-async function loadExpenses() {
-  try {
-    const response = await axios.get('/api/expenses');
-    const expenses = response.data.expenses || [];
-
-    if (expenses.length === 0) {
-      expensesList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No expenses yet.</li>';
-      return;
-    }
-
-    expensesList.innerHTML = expenses.map(expense => `
-      <li class="expense-item">
-        <div class="expense-details">
-          <strong>₹${Number(expense.amount).toFixed(2)}</strong> - ${expense.description} 
-          <em>(${expense.category})</em>
-          <span class="expense-date">${new Date(expense.created_at).toLocaleDateString('en-IN')}</span>
-        </div>
-        <button class="delete-btn" data-id="${expense.id}">Delete</button>
-      </li>
-    `).join('');
-
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.target.dataset.id;
-        if (confirm('Delete expense?')) {
-          try {
-            await axios.delete(`/api/expenses/${id}`);
-            loadExpenses();
-          } catch (err) {
-            console.error('Delete error:', err);
-            alert('Delete failed');
-          }
-        }
-      });
-    });
-
-    // Store expenses globally for reports
-    window.allExpenses = expenses;
-  } catch (err) {
-    console.error('Load expenses error:', err.response || err);
-    expensesList.innerHTML = '<li style="text-align:center; color:#dc3545; padding:20px;">Failed to load expenses.</li>';
-  }
-}
-
-// New: Report Generation (Premium only)
-reportBtn.addEventListener('click', () => {
+// ==================== REPORTS (unchanged) ====================
+reportBtn.addEventListener('click', async () => {
   if (reportSection.style.display === 'block') {
     reportSection.style.display = 'none';
     reportBtn.textContent = 'Show Reports';
     return;
   }
-
+  await loadAllExpenses();   // make sure we have full data
   generateReport();
   reportSection.style.display = 'block';
   reportBtn.textContent = 'Hide Reports';
@@ -168,22 +224,18 @@ function generateReport() {
     reportContent.innerHTML = '<p style="text-align:center; color:#666; padding:20px;">No expenses to show in report.</p>';
     return;
   }
-
   const type = reportType.value;
   const sorted = [...window.allExpenses].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const groups = groupExpenses(sorted, type);
 
   let html = '';
-
   for (let key in groups) {
     html += `<h3>${key}</h3>`;
     html += buildTable(groups[key]);
     html += buildTotals(groups[key]);
   }
-
   html += '<h3>Summary</h3>';
   html += buildSummary(groups);
-
   reportContent.innerHTML = html;
 }
 
@@ -249,13 +301,12 @@ function buildSummary(groups) {
   return html + '</tbody></table>';
 }
 
-// Download Report as CSV
+// Download Report
 downloadBtn.addEventListener('click', () => {
   if (!window.allExpenses || window.allExpenses.length === 0) {
     showMessage('No data to download', '#dc3545');
     return;
   }
-
   const type = reportType.value;
   const groups = groupExpenses(window.allExpenses, type);
   let csv = 'Expense Report\n\n';
@@ -278,7 +329,6 @@ downloadBtn.addEventListener('click', () => {
     csv += `Totals,,${ti},${te},${ti - te}\n\n`;
   }
 
-  // Grand summary
   csv += 'Summary\nPeriod,Income,Expense,Savings\n';
   let gi = 0, ge = 0;
   for (let key in groups) {
@@ -301,18 +351,16 @@ downloadBtn.addEventListener('click', () => {
   URL.revokeObjectURL(link.href);
 });
 
-// Leaderboard Logic
+// Leaderboard (unchanged)
 leaderboardBtn.addEventListener('click', async () => {
   if (leaderboardSection.style.display === 'block') {
     leaderboardSection.style.display = 'none';
     leaderboardBtn.textContent = 'Show Leaderboard';
     return;
   }
-
   try {
     const response = await axios.get('/api/premium/leaderboard');
     const leaderboard = response.data;
-
     if (leaderboard.length === 0) {
       leaderboardList.innerHTML = '<li style="text-align:center; padding:20px; color:#666;">No users yet.</li>';
     } else {
@@ -324,7 +372,6 @@ leaderboardBtn.addEventListener('click', async () => {
         </li>
       `).join('');
     }
-
     leaderboardSection.style.display = 'block';
     leaderboardBtn.textContent = 'Hide Leaderboard';
   } catch (error) {
@@ -347,4 +394,5 @@ function showMessage(text, color = '#dc3545') {
 }
 
 // Initial load
-loadExpenses();
+loadExpenses(1);
+loadAllExpenses();

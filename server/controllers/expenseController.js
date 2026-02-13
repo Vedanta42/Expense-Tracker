@@ -7,7 +7,7 @@ const { GoogleGenAI } = require('@google/genai');
 const ai = new GoogleGenAI(process.env.GEMINI_API_KEY);
 
 const addExpense = async (req, res) => {
-  // Sanitize inputs
+  // ... (unchanged - your original code)
   let { amount, description, category } = req.body;
   const userId = req.userId;
 
@@ -63,12 +63,45 @@ const getExpenses = async (req, res) => {
   }
 
   try {
-    const expenses = await Expense.findAll({
-      where: { userId },
-      order: [['created_at', 'DESC']]
-    });
+    const pageParam = req.query.page;
+    let expenses;
+    let pagination = null;
 
-    res.json({ success: true, expenses });
+    if (pageParam) {
+      // PAGINATED (used by the expense list)
+      const page = parseInt(pageParam) || 1;
+      const limit = 10;
+      const offset = (page - 1) * limit;
+
+      const { count, rows } = await Expense.findAndCountAll({
+        where: { userId },
+        limit,
+        offset,
+        order: [['created_at', 'DESC']]
+      });
+
+      expenses = rows;
+      const totalPages = Math.ceil(count / limit);
+
+      pagination = {
+        currentPage: page,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      };
+    } else {
+      // FULL LIST (used only by Reports section)
+      expenses = await Expense.findAll({
+        where: { userId },
+        order: [['created_at', 'DESC']]
+      });
+    }
+
+    res.json({
+      success: true,
+      expenses,
+      ...(pagination && { pagination })
+    });
   } catch (error) {
     console.error('Get expenses error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -76,6 +109,7 @@ const getExpenses = async (req, res) => {
 };
 
 const deleteExpense = async (req, res) => {
+  // ... (unchanged - your original code)
   const { id } = req.params;
   const userId = req.userId;
 
